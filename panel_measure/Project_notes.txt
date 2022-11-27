@@ -1,0 +1,223 @@
+##############################
+
+        CV project log 
+
+###############################
+
+8Nov:
+2 hours - developed successful raster scan in one direction starting at center of mass of each contour searching for edge of contour
+        - once at edge, was able to find a method for getting tangent line by checking vectors radially from that point for flipping values
+        - able to get ortho normal slope
+        
+        Next: get tangent line
+
+9Nov:
+2 hours - found out that the cv.RETR_APPROX in contour shape returns points that define contour, deccided to just use these instead
+                of rastering from center of mass to find host contour edge(these points are already on the edge of the contour)
+                
+        - success for getting tangent line:
+                defined midpoint between two contour points 
+                define vector from midpoint to next contour point
+                normalize that vector
+                rotate 90 degrees to get orthogonal vector
+
+        Next:   search along this vector direction for next contour
+                figure out how to handle more than two contours
+
+        potential issue: for low resolution images -> if vector is close to vertical or horizontal, it may retreive a pixel past the
+                                true edge of the next contour. perhaps we can implement a backtracking check that observes nearest neighbors
+                                to ensure true edge?
+
+                         NOT SURE IF THIS IS A PROBLEM YET, DON't WASTE TIME ON THIS UNTIL YOU'RE SURE IT'S A PROBLEM
+
+12 Nov:
+1.5 hours - successful implemented measurements, however I am using many static values that will need to be turned into functions of
+                camera distance from vehicle. ex- the radius im checking is 5-100 pixels, which is way to large if far away from surface, or    
+                too small if too close. this check distance should be a function of distance to allow for opperator error slop
+
+                also, measuremnts are unitless, will need depth data to accurately assign a unit
+
+          - calculated best starting distance from vehicle for testing with OAK-d lite. used FOV specs to identify what camera distance 
+                from car body would keep entire vehicle height in the frame. This may not be necessary, but I wanted to start with the most number of features
+                possible for pose estimation and structure from motion accuracy, then move closer as neccessary to improve measuremnts until we 
+                loose ability to localize
+
+                ex: OAKD-lite HFOV = 69*, VFOV = 54*. Height tesla model3 = 1.45m
+                        Y = 1.45m if Z = 1.4m(distance camera to car body)
+
+                        pixel area at this distance = (4.56 * 10^-4)^2 m^2
+                        measure accuracy +/- 0.5mm nominal
+
+13 Nov:
+0.5 hour  - Idea: specifics for handling measuremnts that are non planar to camera -> 
+                1.) If we know location and pose of camera, we should be able to calculate angle of attack from camera origin
+                        to the point on the vehicle body (for every pixel is possible, but we could probably just use a pixel every
+                        10 spaces and apply that angle to all negihboring pixels etc.)
+                2.) use this angle to project our planar measurement onto a projection line that defines new measurment vector.
+                3.) use magnitude of projected vector for actual measuremnts
+
+         - Idea: Building wireframe:
+                1.) Through the project we should be able to build structure from motion of the vehicle. I'm not positive, but I think
+                        this process will include getting perspective transforms like we did for the warp/mosaicing homework. 
+                2.) before applying perspective transform, build a color mask mapping the measurement distances, and apply it to each image,
+                        THEN apply perspective transform
+                3.) use these new masked images for your structure from motion.
+
+         - NEXT: Go take/find an image of a car panel that is fairly straight, and has a consitent gap (meaning ground truth is a constant value
+                        and should remain constant only if transform works) and the body of the car is angled away from the camera (non planar).
+                        (rememebr to get rough estimate of angle for ground truth), and see if you can apply this as a test for projection measuremnts.
+
+20 Nov:
+2 hour    - Wrote interim report
+
+21 Nov:   - idea, can we just use the known location of the laser shot within our image frame to define vectors as we move? for eaxample,
+0 hr            perhaps we know the depth data of two points within some sub sector of our image, lets just use those to define our projection
+                vector, and make an aproximation grid of subsections. 
+          - lets add a weight dimension to our measurements based on this subsection location. each measurement gets a 0-1 multiplier based on 
+            a radius or something from center of screen, or maybe based on the size of the projection vector.
+
+22 Nov:   
+2 hour    - found a cool potential param set change for better depth stability, haven't messed with yet: https://engcang.github.io/d435i2/
+          - changed manual exposure from 8,000 to 25000, no effect seen yet
+          - added output of rs_adv.py to bottom of this page, all settings are stock except the exposure change from above
+          - both depth and color seem to work, but are extremely under exposed, can't use SDK on main machine becuase it's not yet up to ubuntu 22.04
+              seems like documentation for pywrappers is pretty bad, taking forever to figure out basic setting commands
+
+
+
+##############################################################################
+###############   Stock d435i setting from rs_adv.py   #######################
+##############################################################################
+
+Found device that supports advanced mode: Intel RealSense D435I
+Advanced mode is enabled
+Depth Control: 
+ minusDecrement: 10, deepSeaMedianThreshold: 500, scoreThreshA: 1, scoreThreshB: 2047, textureDifferenceThreshold: 0, textureCountThreshold: 0, deepSeaSecondPeakThreshold: 325, deepSeaNeighborThreshold: 7, lrAgreeThreshold: 24
+RSM: 
+ rsmBypass: 0, diffThresh: 4, sloRauDiffThresh: 1, removeThresh: 63
+RAU Support Vector Control: 
+ minWest: 1, minEast: 1, minWEsum: 3, minNorth: 1, minSouth: 1, minNSsum: 3, uShrink: 3, vShrink: 1
+Color Control: 
+ disableSADColor: 0, disableRAUColor: 0, disableSLORightColor: 0, disableSLOLeftColor: 0, disableSADNormalize: 0
+RAU Thresholds Control: 
+ rauDiffThresholdRed: 51, rauDiffThresholdGreen: 51, rauDiffThresholdBlue: 51
+SLO Color Thresholds Control: 
+ diffThresholdRed: 72, diffThresholdGreen: 72, diffThresholdBlue: 72
+SLO Penalty Control: 
+ sloK1Penalty: 60, sloK2Penalty: 342, sloK1PenaltyMod1: 105, sloK2PenaltyMod1: 190, sloK1PenaltyMod2: 70, sloK2PenaltyMod2: 130
+HDAD: 
+ lambdaCensus: 26, lambdaAD: 800, ignoreSAD: 0
+Color Correction: 
+ colorCorrection1: 0.298828, colorCorrection2: 0.293945, colorCorrection3: 0.293945, colorCorrection4: 0.114258, colorCorrection5: -0, colorCorrection6: -0, colorCorrection7: -0, colorCorrection8: -0, colorCorrection9: -0, colorCorrection10: -0, colorCorrection11: -0, colorCorrection12: -0
+Depth Table: 
+ depthUnits: 1000, depthClampMin: 0, depthClampMax: 65536, disparityMode: 0, disparityShift: 0
+Auto Exposure Control: 
+ Mean Intensity Set Point: 1536
+Census: 
+ uDiameter: 9, vDiameter: 9
+Depth Control Min Values: 
+  minusDecrement: 0, deepSeaMedianThreshold: 0, scoreThreshA: 0, scoreThreshB: 0, textureDifferenceThreshold: 0, textureCountThreshold: 0, deepSeaSecondPeakThreshold: 0, deepSeaNeighborThreshold: 0, lrAgreeThreshold: 0
+Depth Control Max Values: 
+  minusDecrement: 255, deepSeaMedianThreshold: 1023, scoreThreshA: 1023, scoreThreshB: 4095, textureDifferenceThreshold: 4095, textureCountThreshold: 1023, deepSeaSecondPeakThreshold: 1023, deepSeaNeighborThreshold: 1023, lrAgreeThreshold: 2047
+After Setting new value, Depth Control: 
+ minusDecrement: 10, deepSeaMedianThreshold: 500, scoreThreshA: 511, scoreThreshB: 2047, textureDifferenceThreshold: 0, textureCountThreshold: 0, deepSeaSecondPeakThreshold: 325, deepSeaNeighborThreshold: 7, lrAgreeThreshold: 24
+Controls as JSON: 
+ {
+    "device": {
+        "fw version": "05.13.00.55",
+        "name": "Intel RealSense D435I",
+        "product line": "D400"
+    },
+    "parameters": {
+        "aux-param-autoexposure-setpoint": "1536",
+        "aux-param-colorcorrection1": "0.298828",
+        "aux-param-colorcorrection10": "-0",
+        "aux-param-colorcorrection11": "-0",
+        "aux-param-colorcorrection12": "-0",
+        "aux-param-colorcorrection2": "0.293945",
+        "aux-param-colorcorrection3": "0.293945",
+        "aux-param-colorcorrection4": "0.114258",
+        "aux-param-colorcorrection5": "-0",
+        "aux-param-colorcorrection6": "-0",
+        "aux-param-colorcorrection7": "-0",
+        "aux-param-colorcorrection8": "-0",
+        "aux-param-colorcorrection9": "-0",
+        "aux-param-depthclampmax": "65536",
+        "aux-param-depthclampmin": "0",
+        "aux-param-disparityshift": "0",
+        "controls-autoexposure-auto": "False",
+        "controls-autoexposure-manual": "25000",
+        "controls-color-autoexposure-auto": "True",
+        "controls-color-autoexposure-manual": "166",
+        "controls-color-backlight-compensation": "0",
+        "controls-color-brightness": "0",
+        "controls-color-contrast": "50",
+        "controls-color-gain": "64",
+        "controls-color-gamma": "300",
+        "controls-color-hue": "0",
+        "controls-color-power-line-frequency": "3",
+        "controls-color-saturation": "64",
+        "controls-color-sharpness": "50",
+        "controls-color-white-balance-auto": "True",
+        "controls-color-white-balance-manual": "4600",
+        "controls-depth-gain": "16",
+        "controls-laserpower": "150",
+        "controls-laserstate": "on",
+        "ignoreSAD": "0",
+        "param-amplitude-factor": "0",
+        "param-autoexposure-setpoint": "1536",
+        "param-censusenablereg-udiameter": "9",
+        "param-censusenablereg-vdiameter": "9",
+        "param-censususize": "9",
+        "param-censusvsize": "9",
+        "param-depthclampmax": "65536",
+        "param-depthclampmin": "0",
+        "param-depthunits": "1000",
+        "param-disableraucolor": "0",
+        "param-disablesadcolor": "0",
+        "param-disablesadnormalize": "0",
+        "param-disablesloleftcolor": "0",
+        "param-disableslorightcolor": "0",
+        "param-disparitymode": "0",
+        "param-disparityshift": "0",
+        "param-lambdaad": "800",
+        "param-lambdacensus": "26",
+        "param-leftrightthreshold": "24",
+        "param-maxscorethreshb": "2047",
+        "param-medianthreshold": "500",
+        "param-minscorethresha": "511",
+        "param-neighborthresh": "7",
+        "param-raumine": "1",
+        "param-rauminn": "1",
+        "param-rauminnssum": "3",
+        "param-raumins": "1",
+        "param-rauminw": "1",
+        "param-rauminwesum": "3",
+        "param-regioncolorthresholdb": "0.0499022",
+        "param-regioncolorthresholdg": "0.0499022",
+        "param-regioncolorthresholdr": "0.0499022",
+        "param-regionshrinku": "3",
+        "param-regionshrinkv": "1",
+        "param-robbinsmonrodecrement": "10",
+        "param-robbinsmonroincrement": "10",
+        "param-rsmdiffthreshold": "4",
+        "param-rsmrauslodiffthreshold": "1",
+        "param-rsmremovethreshold": "0.375",
+        "param-scanlineedgetaub": "72",
+        "param-scanlineedgetaug": "72",
+        "param-scanlineedgetaur": "72",
+        "param-scanlinep1": "60",
+        "param-scanlinep1onediscon": "105",
+        "param-scanlinep1twodiscon": "70",
+        "param-scanlinep2": "342",
+        "param-scanlinep2onediscon": "190",
+        "param-scanlinep2twodiscon": "130",
+        "param-secondpeakdelta": "325",
+        "param-texturecountthresh": "0",
+        "param-texturedifferencethresh": "0",
+        "param-usersm": "1",
+        "param-zunits": "1000"
+    },
+    "schema version": 1
+}
+
