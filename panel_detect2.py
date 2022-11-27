@@ -3,7 +3,7 @@ import numpy as np
 from cmath import inf
 
 #image preperation
-input = cv.imread("project/panel4.jpg", 1)
+input = cv.imread("project/panel5.jpeg", 1)
 
 print("dims:", input.shape[0], input.shape[1])
 
@@ -21,6 +21,7 @@ blurred = cv.medianBlur(blurred,7) #testing additional blur
 thr_val, threshed = cv.threshold(blurred, 60, 255, cv.THRESH_BINARY)
 #threshed = cv.adaptiveThreshold(blurred,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,  cv.THRESH_BINARY,11,2) #dont delete, this works for first imgs
 cv.imshow("threshed", threshed)
+cv.imwrite("panel5_threshed.jpeg", threshed)
 cv.waitKey()
 cv.destroyAllWindows()
 
@@ -35,7 +36,9 @@ print("length cont: ", len(contour))
 painted = blurred.copy()
 
 #shows all contours in green, only really for debugging:
-showContour = cv.drawContours(input, contour, -1, (0, 255, 0), 1)
+showContour = cv.drawContours(input, contour, -1, (0, 255, 0), 2)
+#showContour = cv.drawContours(input, contour, -1, (0, 255, 0), 1)
+cv.imwrite("pane5_contoured.jpeg", showContour)
 cv.imshow("contours", showContour)
 cv.waitKey()
 cv.destroyAllWindows()
@@ -146,7 +149,7 @@ for cnt in contours:
                 #print("in:", r)
 
 
-                if (0 <= x_endPoint <= input.shape[1]) and (0 <= y_endPoint <= input.shape[0]):
+                if (0 <= x_endPoint < input.shape[1]) and (0 <= y_endPoint < input.shape[0]):
                     
                     #check if new pixel is not a black pixel in the threshed image
                     if threshed[y_endPoint, x_endPoint] != 0:
@@ -174,8 +177,8 @@ for cnt in contours:
 
                 r += 1 
 
-            cv.imshow("points", painted)
-            cv.waitKey(1)
+            #cv.imshow("points", painted)
+            #cv.waitKey(1)
 
             #if check == 1:
             #    u = -1*u
@@ -197,14 +200,14 @@ for cnt in contours:
             i += 10 #skip distance, dont want to compute this program at every single line point 
         else:
             break
-    Text = False
+    #Text = False
     c += 1 #next color in list
 
-
+cv.imshow("painted", painted)
 cv.waitKey()
 cv.destroyAllWindows()
 
-#cv.imwrite('panel4_measured.jpg', painted)
+cv.imwrite('panel5_measured.jpeg', painted)
   
 # Showing the final image.
 #cv.imshow('image2', input) 
